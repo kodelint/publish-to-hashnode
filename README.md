@@ -297,12 +297,6 @@ jobs:
 
 Found a bug or want to contribute? Check out our [contribution guidelines](CONTRIBUTING.md) and feel free to open issues or pull requests.
 
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
 ---
-
-**Made with ❤️ by [kodelint](https://github.com/kodelint)**
 
 _Automate your blogging workflow and focus on writing great content!_
