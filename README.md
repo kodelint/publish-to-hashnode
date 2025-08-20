@@ -31,7 +31,7 @@ jobs:
 
       - name: Publish posts to Hashnode
         id: hashnode-publisher
-        uses: your-username/hashnode-publisher@v1 # Replace with your action's repository and tag
+        uses: kodelint/hashnode-publisher@v1 # Replace with your action's repository and tag
         with:
           src: "./posts"
           hashnode_pat: ${{ secrets.HASHNODE_PAT }}
