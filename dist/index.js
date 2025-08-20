@@ -41149,7 +41149,24 @@ async function processMarkdownFile(filePath, hashnodePat, publicationId, postSta
     // Validate required fields
     validateFrontmatter(parsed.data, filename);
 
-    const { title, tags, publishedUrl, subtitle, canonicalUrl, coverImage, publishedAt } = parsed.data;
+    const {
+      title,
+      tags,
+      publishedUrl,
+      subtitle,
+      canonicalUrl,
+      coverImage,
+      coverImageOptions,
+      publishedAt,
+      slug,
+      metaDescription,
+      disableComments,
+      enableTableOfContents,
+      seriesId,
+      coAuthors,
+      isDraft,
+      isRepublished
+    } = parsed.data;
     const hashnodeTags = createHashnodeTags(tags);
 
     if (hashnodeTags.length === 0) {
@@ -41164,8 +41181,21 @@ async function processMarkdownFile(filePath, hashnodePat, publicationId, postSta
       core.warning(`Could not extract post ID from URL "${publishedUrl}" for "${filename}". Will create new post instead.`);
     }
 
-    // Parse the publishedAt date
-    const parsedPublishedAt = parsePublishedAtDate(publishedAt, postStatus);
+    // Parse the publishedAt date - consider isDraft flag
+    const effectivePostStatus = isDraft ? 'draft' : postStatus;
+    const parsedPublishedAt = parsePublishedAtDate(publishedAt, effectivePostStatus);
+
+    // Prepare cover image options
+    const coverImageSettings = coverImage
+      ? { coverImageURL: coverImage }
+      : coverImageOptions?.coverImageURL
+        ? { coverImageURL: coverImageOptions.coverImageURL }
+        : null;
+
+    // Prepare republishing settings
+    const republishingSettings = canonicalUrl || isRepublished?.originalArticleURL
+      ? { originalArticleURL: canonicalUrl || isRepublished.originalArticleURL }
+      : null;
 
     let postData;
 
@@ -41179,12 +41209,14 @@ async function processMarkdownFile(filePath, hashnodePat, publicationId, postSta
           contentMarkdown: parsed.content,
           tags: hashnodeTags,
           ...(parsedPublishedAt && { publishedAt: parsedPublishedAt }),
-          ...(canonicalUrl && {
-            isRepublished: { originalArticleURL: canonicalUrl }
-          }),
-          ...(coverImage && {
-            coverImageOptions: { coverImageURL: coverImage }
-          }),
+          ...(slug && { slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') }),
+          ...(metaDescription && { metaDescription: metaDescription.trim() }),
+          ...(typeof disableComments === 'boolean' && { disableComments }),
+          ...(typeof enableTableOfContents === 'boolean' && { enableTableOfContents }),
+          ...(seriesId && { seriesId }),
+          ...(Array.isArray(coAuthors) && coAuthors.length > 0 && { coAuthors }),
+          ...(republishingSettings && { isRepublished: republishingSettings }),
+          ...(coverImageSettings && { coverImageOptions: coverImageSettings }),
         }
       };
 
@@ -41201,12 +41233,14 @@ async function processMarkdownFile(filePath, hashnodePat, publicationId, postSta
           tags: hashnodeTags,
           publicationId: publicationId,
           ...(parsedPublishedAt && { publishedAt: parsedPublishedAt }),
-          ...(canonicalUrl && {
-            isRepublished: { originalArticleURL: canonicalUrl }
-          }),
-          ...(coverImage && {
-            coverImageOptions: { coverImageURL: coverImage }
-          }),
+          ...(slug && { slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') }),
+          ...(metaDescription && { metaDescription: metaDescription.trim() }),
+          ...(typeof disableComments === 'boolean' && { disableComments }),
+          ...(typeof enableTableOfContents === 'boolean' && { enableTableOfContents }),
+          ...(seriesId && { seriesId }),
+          ...(Array.isArray(coAuthors) && coAuthors.length > 0 && { coAuthors }),
+          ...(republishingSettings && { isRepublished: republishingSettings }),
+          ...(coverImageSettings && { coverImageOptions: coverImageSettings }),
         }
       };
 
