@@ -91,6 +91,7 @@ subtitle: "Automate your development workflow"
 tags: ["github", "automation", "ci-cd", "tutorial"]
 coverImage: "https://example.com/cover-image.jpg"
 canonicalUrl: "https://yourblog.com/original-post"
+publishedAt: "2024-08-15T10:30:00.000Z"
 ---
 
 # Getting Started with GitHub Actions
@@ -116,6 +117,10 @@ Let's dive in!
 - **tags**: Array of tags for your post (required, max 5 tags recommended)
 - **coverImage**: URL to a cover image for your post
 - **canonicalUrl**: If republishing from another site, link to the original
+- **publishedAt**: Specific publication date and time (optional)
+  - ISO 8601 format: `"2024-08-15T10:30:00.000Z"`
+  - Simple date: `"2024-08-15"` (defaults to midnight UTC)
+  - If not specified, uses current time for public posts
 - **publishedUrl**: Added automatically after publishing (don't add this manually)
 
 ## Example Workflows
@@ -292,10 +297,6 @@ jobs:
           hashnode_pat: ${{ secrets.HASHNODE_PAT }}
           publication_id: ${{ secrets.HASHNODE_PUBLICATION_ID }}
 ```
-
-## Contributing
-
-Found a bug or want to contribute? Check out our [contribution guidelines](CONTRIBUTING.md) and feel free to open issues or pull requests.
 
 ---
 

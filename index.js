@@ -4,6 +4,65 @@ const path = require('path');
 const matter = require('gray-matter');
 const axios = require('axios');
 
+// Helper function to parse and validate publishedAt date
+function parsePublishedAtDate(publishedAt, postStatus) {
+  if (!publishedAt) {
+    // If no date specified and status is public, use current time
+    return postStatus === 'public' ? new Date().toISOString() : null;
+  }
+
+  try {
+    let date;
+
+    if (typeof publishedAt === 'string') {
+      // Handle different date formats
+      if (publishedAt.includes('T') || publishedAt.includes('Z')) {
+        // Already in ISO format
+        date = new Date(publishedAt);
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(publishedAt)) {
+        // YYYY-MM-DD format, default to midnight UTC
+        date = new Date(`${publishedAt}T00:00:00.000Z`);
+      } else {
+        // Try to parse as-is
+        date = new Date(publishedAt);
+      }
+    } else {
+      date = new Date(publishedAt);
+    }
+
+    if (isNaN(date.getTime())) {
+      throw new Error(`Invalid date format: ${publishedAt}`);
+    }
+
+    return date.toISOString();
+  } catch (error) {
+    throw new Error(`Failed to parse publishedAt date "${publishedAt}": ${error.message}`);
+  }
+}
+
+// Helper function to recursively find markdown files
+async function findMarkdownFiles(dir) {
+  const files = [];
+  const items = await fs.readdir(dir, { withFileTypes: true });
+
+  for (const item of items) {
+    const fullPath = path.join(dir, item.name);
+
+    if (item.isDirectory()) {
+      // Recursively search subdirectories
+      const subFiles = await findMarkdownFiles(fullPath);
+      files.push(...subFiles);
+    } else if (item.isFile()) {
+      const ext = path.extname(item.name).toLowerCase();
+      if (ext === '.md' || ext === '.markdown') {
+        files.push(fullPath);
+      }
+    }
+  }
+
+  return files;
+}
+
 // Helper function to extract post ID from Hashnode URL
 function extractPostIdFromUrl(url) {
   if (!url || typeof url !== 'string') {
@@ -130,7 +189,7 @@ async function processMarkdownFile(filePath, hashnodePat, publicationId, postSta
     // Validate required fields
     validateFrontmatter(parsed.data, filename);
 
-    const { title, tags, publishedUrl, subtitle, canonicalUrl, coverImage } = parsed.data;
+    const { title, tags, publishedUrl, subtitle, canonicalUrl, coverImage, publishedAt } = parsed.data;
     const hashnodeTags = createHashnodeTags(tags);
 
     if (hashnodeTags.length === 0) {
@@ -145,6 +204,9 @@ async function processMarkdownFile(filePath, hashnodePat, publicationId, postSta
       core.warning(`Could not extract post ID from URL "${publishedUrl}" for "${filename}". Will create new post instead.`);
     }
 
+    // Parse the publishedAt date
+    const parsedPublishedAt = parsePublishedAtDate(publishedAt, postStatus);
+
     let postData;
 
     if (shouldUpdate && postId) {
@@ -156,6 +218,7 @@ async function processMarkdownFile(filePath, hashnodePat, publicationId, postSta
           subtitle: subtitle?.trim() || null,
           contentMarkdown: parsed.content,
           tags: hashnodeTags,
+          ...(parsedPublishedAt && { publishedAt: parsedPublishedAt }),
           ...(canonicalUrl && {
             isRepublished: { originalArticleURL: canonicalUrl }
           }),
@@ -177,7 +240,7 @@ async function processMarkdownFile(filePath, hashnodePat, publicationId, postSta
           contentMarkdown: parsed.content,
           tags: hashnodeTags,
           publicationId: publicationId,
-          ...(postStatus === 'draft' && { publishedAt: null }),
+          ...(parsedPublishedAt && { publishedAt: parsedPublishedAt }),
           ...(canonicalUrl && {
             isRepublished: { originalArticleURL: canonicalUrl }
           }),
@@ -236,12 +299,8 @@ async function run() {
       throw new Error(`Source directory "${src}" does not exist or is not accessible`);
     }
 
-    // Get markdown files
-    const files = await fs.readdir(src);
-    const markdownFiles = files.filter(file =>
-      path.extname(file).toLowerCase() === '.md' ||
-      path.extname(file).toLowerCase() === '.markdown'
-    );
+    // Get markdown files recursively
+    const markdownFiles = await findMarkdownFiles(src);
 
     if (markdownFiles.length === 0) {
       core.warning(`No markdown files found in "${src}"`);
@@ -254,8 +313,7 @@ async function run() {
     let successCount = 0;
     let errorCount = 0;
 
-    for (const file of markdownFiles) {
-      const filePath = path.join(src, file);
+    for (const filePath of markdownFiles) {
 
       try {
         await processMarkdownFile(filePath, hashnodePat, publicationId, postStatus, updateExistingPosts);
