@@ -1,0 +1,15 @@
+{
+  "name": "hashnode-publisher",
+  "version": "1.0.0",
+  "description": "A GitHub Action to publish blog posts to Hashnode.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@actions/core": "^1.10.0",
+    "@actions/github": "^5.1.1",
+    "axios": "^1.5.0",
+    "gray-matter": "^4.0.3"
+  }
+}

@@ -1,0 +1,42 @@
+name: "Hashnode Publisher"
+description: "Automate publishing Markdown blog posts to Hashnode via GraphQL API"
+author: "kodelint"
+
+branding:
+  icon: "edit-3"
+  color: "blue"
+
+inputs:
+  src:
+    description: "Path to directory containing Markdown files to publish"
+    required: true
+
+  hashnode_pat:
+    description: "Hashnode Personal Access Token (store as GitHub Secret)"
+    required: true
+
+  publication_id:
+    description: "ID of your Hashnode publication where posts will be published"
+    required: true
+
+  post_status:
+    description: "Status of published posts: 'draft' or 'public'"
+    required: false
+    default: "public"
+
+  update_existing_posts:
+    description: "Whether to update posts that already have a publishedUrl in frontmatter"
+    required: false
+    default: "false"
+
+outputs:
+  posts_processed:
+    description: "Number of markdown files processed"
+  posts_successful:
+    description: "Number of posts successfully published/updated"
+  posts_failed:
+    description: "Number of posts that failed to publish/update"
+
+runs:
+  using: "node20"
+  main: "index.js"
