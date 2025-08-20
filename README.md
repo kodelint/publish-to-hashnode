@@ -1,86 +1,308 @@
 # Hashnode Publisher 📝
 
-A GitHub Action to automate publishing Markdown blog posts to Hashnode. This action reads Markdown files, extracts metadata from the front matter, and publishes the content to your Hashnode publication.
+A GitHub Action that automatically publishes your Markdown blog posts to Hashnode. Simply commit your posts to your repository and let the action handle the publishing process.
 
-## 🚀 Usage
+## Features
 
-Here is a complete workflow example to get you started. This workflow runs on a `push` to the `main` branch, publishing any new or updated blog posts from the `posts/` directory.
+- ✅ Publishes Markdown files to your Hashnode publication
+- 🔄 Updates existing posts when you modify them
+- 🏷️ Automatically handles tags and metadata
+- 📊 Provides detailed logging and error reporting
+- 🎯 Supports both draft and public publishing
+- 🖼️ Handles cover images and canonical URLs
 
-### Prerequisites
+## Quick Start
 
-- **Hashnode Personal Access Token:** You need a Hashnode Personal Access Token (PAT). You can generate one from your [Hashnode dashboard](https://hashnode.com/settings/pat).
-- **Publication ID:** Find your publication ID in your Hashnode dashboard.
-- **GitHub Secret:** Store your Hashnode PAT as a GitHub Secret in your repository settings (e.g., named `HASHNODE_PAT`).
+### 1. Get Your Hashnode Credentials
 
-### Example Workflow (`.github/workflows/publish.yml`)
+Before using this action, you'll need:
+
+- **Personal Access Token**: Go to [Hashnode Settings](https://hashnode.com/settings/developer) → API → Generate new token
+- **Publication ID**: In your Hashnode dashboard, go to your publication settings. The ID is in the URL or settings page
+
+### 2. Store Your Token as a Secret
+
+In your GitHub repository:
+
+1. Go to Settings → Secrets and variables → Actions
+2. Click "New repository secret"
+3. Name: `HASHNODE_PAT`
+4. Value: Your Hashnode Personal Access Token
+
+### 3. Create Your Workflow
+
+Create `.github/workflows/publish-to-hashnode.yml`:
 
 ```yaml
 name: Publish to Hashnode
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths: ["posts/**/*.md"] # Only run when markdown files in posts/ change
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Publish to Hashnode
+        uses: kodelint/publish-to-hashnode@v1
+        with:
+          src: "./posts"
+          hashnode_pat: ${{ secrets.HASHNODE_PAT }}
+          publication_id: "your-publication-id-here"
+          post_status: "public"
+          update_existing_posts: "true"
+```
+
+## Configuration Options
+
+| Input                   | Description                              | Required | Default  |
+| ----------------------- | ---------------------------------------- | -------- | -------- |
+| `src`                   | Directory containing your Markdown files | ✅ Yes   |          |
+| `hashnode_pat`          | Your Hashnode Personal Access Token      | ✅ Yes   |          |
+| `publication_id`        | Your Hashnode publication ID             | ✅ Yes   |          |
+| `post_status`           | Post visibility: `public` or `draft`     | No       | `public` |
+| `update_existing_posts` | Update posts that already exist          | No       | `false`  |
+
+## Writing Your Posts
+
+Your Markdown files need frontmatter (YAML metadata) at the top. Here's what you need:
+
+### Required Fields
+
+```yaml
+---
+title: "Your Post Title"
+tags: ["tag1", "tag2", "tag3"]
+---
+```
+
+### Complete Example
+
+```markdown
+---
+title: "Getting Started with GitHub Actions"
+subtitle: "Automate your development workflow"
+tags: ["github", "automation", "ci-cd", "tutorial"]
+coverImage: "https://example.com/cover-image.jpg"
+canonicalUrl: "https://yourblog.com/original-post"
+---
+
+# Getting Started with GitHub Actions
+
+GitHub Actions is a powerful automation platform that can help you build, test, and deploy your code right from GitHub.
+
+## What You'll Learn
+
+In this tutorial, we'll cover:
+
+- Setting up your first workflow
+- Understanding YAML syntax
+- Using community actions
+- Best practices for CI/CD
+
+Let's dive in!
+```
+
+### Field Descriptions
+
+- **title**: Your post title (required)
+- **subtitle**: Optional subtitle that appears under the title
+- **tags**: Array of tags for your post (required, max 5 tags recommended)
+- **coverImage**: URL to a cover image for your post
+- **canonicalUrl**: If republishing from another site, link to the original
+- **publishedUrl**: Added automatically after publishing (don't add this manually)
+
+## Example Workflows
+
+### Basic Setup
+
+```yaml
+name: Publish New Posts
+
+on:
+  push:
+    branches: [main]
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: kodelint/publish-to-hashnode@v1
+        with:
+          src: "./blog"
+          hashnode_pat: ${{ secrets.HASHNODE_PAT }}
+          publication_id: ${{ secrets.HASHNODE_PUBLICATION_ID }}
+```
 
-      - name: Publish posts to Hashnode
-        id: hashnode-publisher
-        uses: kodelint/hashnode-publisher@v1 # Replace with your action's repository and tag
+### Publish as Drafts First
+
+```yaml
+name: Draft Posts for Review
+
+on:
+  pull_request:
+    paths: ["content/**/*.md"]
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: kodelint/publish-to-hashnode@v1
+        with:
+          src: "./content"
+          hashnode_pat: ${{ secrets.HASHNODE_PAT }}
+          publication_id: ${{ secrets.HASHNODE_PUBLICATION_ID }}
+          post_status: "draft"
+```
+
+### Conditional Publishing
+
+```yaml
+name: Smart Publishing
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Get previous commit for comparison
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v39
+        with:
+          files: |
+            posts/**/*.md
+
+      - name: Publish changed posts
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: kodelint/publish-to-hashnode@v1
         with:
           src: "./posts"
           hashnode_pat: ${{ secrets.HASHNODE_PAT }}
-          publication_id: "your-publication-id" # Replace with your publication ID
-          post_status: "public"
+          publication_id: ${{ secrets.HASHNODE_PUBLICATION_ID }}
           update_existing_posts: "true"
 ```
 
-## ⚙️ Inputs
+## Repository Structure
 
-| Name                    | Description                                                              | Required | Default  |
-| ----------------------- | ------------------------------------------------------------------------ | -------- | -------- |
-| `src`                   | The path to the directory containing the Markdown blog posts.            | `true`   |          |
-| `hashnode_pat`          | Your Hashnode Personal Access Token. Use a GitHub Secret for this value. | `true`   |          |
-| `publication_id`        | The ID of the Hashnode publication.                                      | `true`   |          |
-| `post_status`           | The status of the published post. Accepts `draft` or `public`            | `false`  | `public` |
-| `update_existing_posts` | Set to `true` to update posts that have already been published.          | `false`  | `false`  |
+Here's how you might organize your blog repository:
 
-## 📝 Post Front Matter
-
-Your Markdown files must include a YAML front matter block at the top with the required metadata. The action uses the `title` and `tags` to create a new post. If `update_existing_posts` is `true`, the `publishedUrl` will be used to update an existing post.
-
-#### Required Fields:
-
-- **title:** The title of the post.
-- **tags:** An array of strings representing the tags for the post.
-
-#### Optional Fields:
-
-- **subtitle:** A subtitle for the post.
-- **coverImage:** URL of the cover image for the post.
-- **publishedUrl:** Added automatically by the action after a successful publish. Used for updates.
-- **canonicalUrl:** An optional URL if the post was originally published elsewhere.
-
-## Example
-
-```markdown
----
-title: "My Awesome Blog Post"
-subtitle: "A subtitle for my post."
-tags:
-  - "github-actions"
-  - "hashnode"
-  - "automation"
-coverImage: "[https://example.com/cover.jpg](https://example.com/cover.jpg)"
-canonicalUrl: "[https://example.com/original-post](https://example.com/original-post)"
----
-
-# My Awesome Blog Post
-
-This is the content of my blog post. It's written in Markdown.
 ```
+your-blog-repo/
+├── .github/
+│   └── workflows/
+│       └── publish-to-hashnode.yml
+├── posts/
+│   ├── 2024-01-15-getting-started.md
+│   ├── 2024-02-01-advanced-tips.md
+│   └── 2024-02-15-best-practices.md
+├── images/
+│   ├── cover-1.jpg
+│   └── cover-2.jpg
+└── README.md
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**"No markdown files found"**
+
+- Check your `src` path is correct
+- Ensure files have `.md` or `.markdown` extensions
+
+**"Missing required 'title' field"**
+
+- Add a title in your frontmatter: `title: "Your Title"`
+
+**"Invalid tags"**
+
+- Tags must be an array: `tags: ["tag1", "tag2"]`
+- Each tag should be a string
+
+**"Could not extract post ID from URL"**
+
+- This happens when `publishedUrl` in frontmatter is malformed
+- The action will create a new post instead of updating
+
+### Getting Help
+
+If you encounter issues:
+
+1. Check the action logs in your GitHub Actions tab
+2. Verify your Hashnode PAT has the correct permissions
+3. Ensure your publication ID is correct
+4. [Open an issue](https://github.com/kodelint/publish-to-hashnode/issues) with details
+
+## Advanced Usage
+
+### Multiple Publications
+
+You can publish to different publications based on conditions:
+
+```yaml
+- name: Publish to Tech Blog
+  if: contains(github.event.head_commit.message, '[tech]')
+  uses: kodelint/publish-to-hashnode@v1
+  with:
+    src: "./posts"
+    hashnode_pat: ${{ secrets.HASHNODE_PAT }}
+    publication_id: ${{ secrets.TECH_PUBLICATION_ID }}
+
+- name: Publish to Personal Blog
+  if: contains(github.event.head_commit.message, '[personal]')
+  uses: kodelint/publish-to-hashnode@v1
+  with:
+    src: "./posts"
+    hashnode_pat: ${{ secrets.HASHNODE_PAT }}
+    publication_id: ${{ secrets.PERSONAL_PUBLICATION_ID }}
+```
+
+### Scheduled Publishing
+
+Publish posts on a schedule:
+
+```yaml
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Every Monday at 9 AM UTC
+
+jobs:
+  scheduled-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: kodelint/publish-to-hashnode@v1
+        with:
+          src: "./scheduled-posts"
+          hashnode_pat: ${{ secrets.HASHNODE_PAT }}
+          publication_id: ${{ secrets.HASHNODE_PUBLICATION_ID }}
+```
+
+## Contributing
+
+Found a bug or want to contribute? Check out our [contribution guidelines](CONTRIBUTING.md) and feel free to open issues or pull requests.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+**Made with ❤️ by [kodelint](https://github.com/kodelint)**
+
+_Automate your blogging workflow and focus on writing great content!_
