@@ -1,4 +1,4 @@
-name: "Hashnode Publisher"
+name: "Markdown Blogs publisher for Hashnode"
 description: "Automate publishing Markdown blog posts to Hashnode via GraphQL API"
 author: "kodelint"
 
